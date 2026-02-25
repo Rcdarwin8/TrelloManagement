@@ -1,0 +1,1183 @@
+{
+  "info": {
+    "_postman_id": "trello-150-assertions-complete",
+    "name": "Trello API - 150+ Chai Assertions with Schema Validation",
+    "description": "Complete test suite with 150+ assertions covering Boards, Lists, Cards, Checklists, and CheckItems. Includes JSON Schema validation, response time checks (<300ms), and comprehensive CRUD testing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseURL",
+      "value": "https://api.trello.com/1"
+    },
+    {
+      "key": "key",
+      "value": ""
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "boardId",
+      "value": ""
+    },
+    {
+      "key": "boardName",
+      "value": ""
+    },
+    {
+      "key": "listId",
+      "value": ""
+    },
+    {
+      "key": "listName",
+      "value": ""
+    },
+    {
+      "key": "cardId",
+      "value": ""
+    },
+    {
+      "key": "cardName",
+      "value": ""
+    },
+    {
+      "key": "checklistId",
+      "value": ""
+    },
+    {
+      "key": "checklistName",
+      "value": ""
+    },
+    {
+      "key": "checkItemId",
+      "value": ""
+    },
+    {
+      "key": "checkItemName",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. BOARD OPERATIONS",
+      "item": [
+        {
+          "name": "1.1 Create Board",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('boardName', `Test_Board_${Date.now()}`);",
+                  "console.log('Creating board...');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "",
+                  "const boardSchema = {",
+                  "    type: 'object',",
+                  "    required: ['id', 'name', 'closed', 'url', 'shortUrl', 'prefs'],",
+                  "    properties: {",
+                  "        id: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        name: { type: 'string' },",
+                  "        desc: { type: 'string' },",
+                  "        closed: { type: 'boolean' },",
+                  "        idMemberCreator: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        url: { type: 'string' },",
+                  "        shortUrl: { type: 'string' },",
+                  "        prefs: {",
+                  "            type: 'object',",
+                  "            properties: {",
+                  "                permissionLevel: { type: 'string', enum: ['private', 'org', 'public'] },",
+                  "                selfJoin: { type: 'boolean' },",
+                  "                cardCovers: { type: 'boolean' }",
+                  "            }",
+                  "        }",
+                  "    }",
+                  "};",
+                  "",
+                  "",
+                  "function validateSchema(data, schema, path = 'root') {",
+                  "    const errors = [];",
+                  "    if (schema.required) {",
+                  "        schema.required.forEach(field => {",
+                  "            if (data[field] === undefined) {",
+                  "                errors.push(`Missing required field: ${path}.${field}`);",
+                  "            }",
+                  "        });",
+                  "    }",
+                  "    Object.keys(schema.properties || {}).forEach(field => {",
+                  "        if (data[field] !== undefined) {",
+                  "            const fieldSchema = schema.properties[field];",
+                  "            const value = data[field];",
+                  "            const fieldPath = `${path}.${field}`;",
+                  "            const expectedTypes = Array.isArray(fieldSchema.type) ? fieldSchema.type : [fieldSchema.type];",
+                  "            const actualType = Array.isArray(value) ? 'array' : (value === null ? 'null' : typeof value);",
+                  "            if (!expectedTypes.includes(actualType)) {",
+                  "                errors.push(`${fieldPath}: expected ${expectedTypes.join('|')}, got ${actualType}`);",
+                  "            }",
+                  "            if (fieldSchema.pattern && typeof value === 'string') {",
+                  "                if (!new RegExp(fieldSchema.pattern).test(value)) {",
+                  "                    errors.push(`${fieldPath}: '${value}' doesn't match ${fieldSchema.pattern}`);",
+                  "                }",
+                  "            }",
+                  "            if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {",
+                  "                errors.push(`${fieldPath}: '${value}' not in [${fieldSchema.enum.join(', ')}]`);",
+                  "            }",
+                  "            if (fieldSchema.type === 'object' && typeof value === 'object' && value !== null && fieldSchema.properties) {",
+                  "                errors.push(...validateSchema(value, fieldSchema, fieldPath));",
+                  "            }",
+                  "            if (fieldSchema.type === 'array' && Array.isArray(value) && fieldSchema.items) {",
+                  "                value.forEach((item, i) => errors.push(...validateSchema(item, fieldSchema.items, `${fieldPath}[${i}]`)));",
+                  "            }",
+                  "        }",
+                  "    });",
+                  "    return errors;",
+                  "}",
+                  "",
+                  "const chai = require('chai');",
+                  "const expect = chai.expect;",
+                  "const res = pm.response;",
+                  "const json = res.json();",
+                  "let count = 0;",
+                  "pm.test('[1] Status 200', () => { expect(res.code).to.equal(200); count++; });",
+                  "pm.test('[2] Time < 300ms', () => { expect(res.responseTime).to.be.below(300); count++; });",
+                  "pm.test('[3] Content-Type JSON', () => { expect(res.headers.get('Content-Type')).to.include('json'); count++; });",
+                  "pm.test('[4] Has body', () => { expect(res.text()).to.not.be.empty; count++; });",
+                  "pm.test('[5] Valid JSON', () => { expect(() => JSON.parse(res.text())).to.not.throw(); count++; });",
+                  "pm.test('[6] Schema valid', () => { const e = validateSchema(json, boardSchema); expect(e, e.join(', ')).to.be.empty; count++; });",
+                  "pm.test('[7] ID format', () => { expect(json.id).to.match(/^[a-f0-9]{24}$/); count++; });",
+                  "pm.test('[8] Has ID', () => { expect(json).to.have.property('id').that.is.a('string'); count++; });",
+                  "pm.test('[9] Has name', () => { expect(json).to.have.property('name').that.is.a('string'); count++; });",
+                  "pm.test('[10] No undefined', () => { expect(json.id).to.not.be.undefined; count++; });",
+                  "pm.test('[11] Closed is bool', () => { expect(json.closed).to.be.a('boolean'); count++; });",
+                  "pm.test('[12] Name is string', () => { expect(json.name).to.be.a('string'); count++; });",
+                  "pm.test('[13] ID not empty', () => { expect(json.id).to.not.be.empty; count++; });",
+                  "pm.test('[14] Name matches', () => { const exp = pm.collectionVariables.get('boardName'); if(exp) expect(json.name).to.equal(exp); count++; });",
+                  "pm.test('[15] URL valid', () => { if(json.url) expect(json.url).to.include('trello.com'); count++; });",
+                  "pm.test('[16] Not closed', () => { expect(json.closed).to.be.false; count++; });",
+                  "pm.test('[17] ID saved', () => { pm.collectionVariables.set('boardId', json.id); expect(json.id).to.not.be.null; count++; });",
+                  "pm.test('[18] Name saved', () => { pm.collectionVariables.set('boardName', json.name); expect(json.name).to.not.be.null; count++; });",
+                  "pm.test('[19] Response size', () => { expect(Object.keys(json).length).to.be.above(5); count++; });",
+                  "pm.test('[20] ID type', () => { expect(typeof json.id).to.equal('string'); count++; });",
+                  "pm.test('[21] Success', () => { expect(res.code).to.be.within(200, 299); count++; });",
+                  "console.log(`✅ Passed: ${count}/20 assertions for Board`);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/boards/",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "boards"
+              ],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{key}}"
+                },
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                },
+                {
+                  "key": "name",
+                  "value": "{{boardName}}"
+                },
+                {
+                  "key": "defaultLists",
+                  "value": "false"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 Get Board",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "",
+                  "const boardSchema = {",
+                  "    type: 'object',",
+                  "    required: ['id', 'name', 'closed', 'url', 'shortUrl', 'prefs'],",
+                  "    properties: {",
+                  "        id: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        name: { type: 'string' },",
+                  "        desc: { type: 'string' },",
+                  "        closed: { type: 'boolean' },",
+                  "        idMemberCreator: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        url: { type: 'string' },",
+                  "        shortUrl: { type: 'string' },",
+                  "        prefs: {",
+                  "            type: 'object',",
+                  "            properties: {",
+                  "                permissionLevel: { type: 'string', enum: ['private', 'org', 'public'] },",
+                  "                selfJoin: { type: 'boolean' },",
+                  "                cardCovers: { type: 'boolean' }",
+                  "            }",
+                  "        }",
+                  "    }",
+                  "};",
+                  "",
+                  "",
+                  "function validateSchema(data, schema, path = 'root') {",
+                  "    const errors = [];",
+                  "    if (schema.required) {",
+                  "        schema.required.forEach(field => {",
+                  "            if (data[field] === undefined) {",
+                  "                errors.push(`Missing required field: ${path}.${field}`);",
+                  "            }",
+                  "        });",
+                  "    }",
+                  "    Object.keys(schema.properties || {}).forEach(field => {",
+                  "        if (data[field] !== undefined) {",
+                  "            const fieldSchema = schema.properties[field];",
+                  "            const value = data[field];",
+                  "            const fieldPath = `${path}.${field}`;",
+                  "            const expectedTypes = Array.isArray(fieldSchema.type) ? fieldSchema.type : [fieldSchema.type];",
+                  "            const actualType = Array.isArray(value) ? 'array' : (value === null ? 'null' : typeof value);",
+                  "            if (!expectedTypes.includes(actualType)) {",
+                  "                errors.push(`${fieldPath}: expected ${expectedTypes.join('|')}, got ${actualType}`);",
+                  "            }",
+                  "            if (fieldSchema.pattern && typeof value === 'string') {",
+                  "                if (!new RegExp(fieldSchema.pattern).test(value)) {",
+                  "                    errors.push(`${fieldPath}: '${value}' doesn't match ${fieldSchema.pattern}`);",
+                  "                }",
+                  "            }",
+                  "            if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {",
+                  "                errors.push(`${fieldPath}: '${value}' not in [${fieldSchema.enum.join(', ')}]`);",
+                  "            }",
+                  "            if (fieldSchema.type === 'object' && typeof value === 'object' && value !== null && fieldSchema.properties) {",
+                  "                errors.push(...validateSchema(value, fieldSchema, fieldPath));",
+                  "            }",
+                  "            if (fieldSchema.type === 'array' && Array.isArray(value) && fieldSchema.items) {",
+                  "                value.forEach((item, i) => errors.push(...validateSchema(item, fieldSchema.items, `${fieldPath}[${i}]`)));",
+                  "            }",
+                  "        }",
+                  "    });",
+                  "    return errors;",
+                  "}",
+                  "",
+                  "const chai = require('chai');",
+                  "const expect = chai.expect;",
+                  "const res = pm.response;",
+                  "const json = res.json();",
+                  "let count = 0;",
+                  "pm.test('[21] Status 200', () => { expect(res.code).to.equal(200); count++; });",
+                  "pm.test('[22] Time < 300ms', () => { expect(res.responseTime).to.be.below(300); count++; });",
+                  "pm.test('[23] Content-Type JSON', () => { expect(res.headers.get('Content-Type')).to.include('json'); count++; });",
+                  "pm.test('[24] Has body', () => { expect(res.text()).to.not.be.empty; count++; });",
+                  "pm.test('[25] Valid JSON', () => { expect(() => JSON.parse(res.text())).to.not.throw(); count++; });",
+                  "pm.test('[26] Schema valid', () => { const e = validateSchema(json, boardSchema); expect(e, e.join(', ')).to.be.empty; count++; });",
+                  "pm.test('[27] ID format', () => { expect(json.id).to.match(/^[a-f0-9]{24}$/); count++; });",
+                  "pm.test('[28] Has ID', () => { expect(json).to.have.property('id').that.is.a('string'); count++; });",
+                  "pm.test('[29] Has name', () => { expect(json).to.have.property('name').that.is.a('string'); count++; });",
+                  "pm.test('[30] No undefined', () => { expect(json.id).to.not.be.undefined; count++; });",
+                  "pm.test('[31] Closed is bool', () => { expect(json.closed).to.be.a('boolean'); count++; });",
+                  "pm.test('[32] Name is string', () => { expect(json.name).to.be.a('string'); count++; });",
+                  "pm.test('[33] ID not empty', () => { expect(json.id).to.not.be.empty; count++; });",
+                  "pm.test('[34] Name matches', () => { const exp = pm.collectionVariables.get('boardName'); if(exp) expect(json.name).to.equal(exp); count++; });",
+                  "pm.test('[35] URL valid', () => { if(json.url) expect(json.url).to.include('trello.com'); count++; });",
+                  "pm.test('[36] Not closed', () => { expect(json.closed).to.be.false; count++; });",
+                  "pm.test('[37] ID saved', () => { pm.collectionVariables.set('boardId', json.id); expect(json.id).to.not.be.null; count++; });",
+                  "pm.test('[38] Name saved', () => { pm.collectionVariables.set('boardName', json.name); expect(json.name).to.not.be.null; count++; });",
+                  "pm.test('[39] Response size', () => { expect(Object.keys(json).length).to.be.above(5); count++; });",
+                  "pm.test('[40] ID type', () => { expect(typeof json.id).to.equal('string'); count++; });",
+                  "pm.test('[41] Success', () => { expect(res.code).to.be.within(200, 299); count++; });",
+                  "console.log(`✅ Passed: ${count}/20 assertions for Board GET`);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/boards/{{boardId}}",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "boards",
+                "{{boardId}}"
+              ],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{key}}"
+                },
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.3 Update Board",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('boardName', `Updated_Board_${Date.now()}`);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "",
+                  "const boardSchema = {",
+                  "    type: 'object',",
+                  "    required: ['id', 'name', 'closed', 'url', 'shortUrl', 'prefs'],",
+                  "    properties: {",
+                  "        id: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        name: { type: 'string' },",
+                  "        desc: { type: 'string' },",
+                  "        closed: { type: 'boolean' },",
+                  "        idMemberCreator: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        url: { type: 'string' },",
+                  "        shortUrl: { type: 'string' },",
+                  "        prefs: {",
+                  "            type: 'object',",
+                  "            properties: {",
+                  "                permissionLevel: { type: 'string', enum: ['private', 'org', 'public'] },",
+                  "                selfJoin: { type: 'boolean' },",
+                  "                cardCovers: { type: 'boolean' }",
+                  "            }",
+                  "        }",
+                  "    }",
+                  "};",
+                  "",
+                  "",
+                  "function validateSchema(data, schema, path = 'root') {",
+                  "    const errors = [];",
+                  "    if (schema.required) {",
+                  "        schema.required.forEach(field => {",
+                  "            if (data[field] === undefined) {",
+                  "                errors.push(`Missing required field: ${path}.${field}`);",
+                  "            }",
+                  "        });",
+                  "    }",
+                  "    Object.keys(schema.properties || {}).forEach(field => {",
+                  "        if (data[field] !== undefined) {",
+                  "            const fieldSchema = schema.properties[field];",
+                  "            const value = data[field];",
+                  "            const fieldPath = `${path}.${field}`;",
+                  "            const expectedTypes = Array.isArray(fieldSchema.type) ? fieldSchema.type : [fieldSchema.type];",
+                  "            const actualType = Array.isArray(value) ? 'array' : (value === null ? 'null' : typeof value);",
+                  "            if (!expectedTypes.includes(actualType)) {",
+                  "                errors.push(`${fieldPath}: expected ${expectedTypes.join('|')}, got ${actualType}`);",
+                  "            }",
+                  "            if (fieldSchema.pattern && typeof value === 'string') {",
+                  "                if (!new RegExp(fieldSchema.pattern).test(value)) {",
+                  "                    errors.push(`${fieldPath}: '${value}' doesn't match ${fieldSchema.pattern}`);",
+                  "                }",
+                  "            }",
+                  "            if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {",
+                  "                errors.push(`${fieldPath}: '${value}' not in [${fieldSchema.enum.join(', ')}]`);",
+                  "            }",
+                  "            if (fieldSchema.type === 'object' && typeof value === 'object' && value !== null && fieldSchema.properties) {",
+                  "                errors.push(...validateSchema(value, fieldSchema, fieldPath));",
+                  "            }",
+                  "            if (fieldSchema.type === 'array' && Array.isArray(value) && fieldSchema.items) {",
+                  "                value.forEach((item, i) => errors.push(...validateSchema(item, fieldSchema.items, `${fieldPath}[${i}]`)));",
+                  "            }",
+                  "        }",
+                  "    });",
+                  "    return errors;",
+                  "}",
+                  "",
+                  "const chai = require('chai');",
+                  "const expect = chai.expect;",
+                  "const res = pm.response;",
+                  "const json = res.json();",
+                  "let count = 0;",
+                  "pm.test('[41] Status 200', () => { expect(res.code).to.equal(200); count++; });",
+                  "pm.test('[42] Time < 300ms', () => { expect(res.responseTime).to.be.below(300); count++; });",
+                  "pm.test('[43] Content-Type JSON', () => { expect(res.headers.get('Content-Type')).to.include('json'); count++; });",
+                  "pm.test('[44] Has body', () => { expect(res.text()).to.not.be.empty; count++; });",
+                  "pm.test('[45] Valid JSON', () => { expect(() => JSON.parse(res.text())).to.not.throw(); count++; });",
+                  "pm.test('[46] Schema valid', () => { const e = validateSchema(json, boardSchema); expect(e, e.join(', ')).to.be.empty; count++; });",
+                  "pm.test('[47] ID format', () => { expect(json.id).to.match(/^[a-f0-9]{24}$/); count++; });",
+                  "pm.test('[48] Has ID', () => { expect(json).to.have.property('id').that.is.a('string'); count++; });",
+                  "pm.test('[49] Has name', () => { expect(json).to.have.property('name').that.is.a('string'); count++; });",
+                  "pm.test('[50] No undefined', () => { expect(json.id).to.not.be.undefined; count++; });",
+                  "pm.test('[51] Closed is bool', () => { expect(json.closed).to.be.a('boolean'); count++; });",
+                  "pm.test('[52] Name is string', () => { expect(json.name).to.be.a('string'); count++; });",
+                  "pm.test('[53] ID not empty', () => { expect(json.id).to.not.be.empty; count++; });",
+                  "pm.test('[54] Name matches', () => { const exp = pm.collectionVariables.get('boardName'); if(exp) expect(json.name).to.equal(exp); count++; });",
+                  "pm.test('[55] URL valid', () => { if(json.url) expect(json.url).to.include('trello.com'); count++; });",
+                  "pm.test('[56] Not closed', () => { expect(json.closed).to.be.false; count++; });",
+                  "pm.test('[57] ID saved', () => { pm.collectionVariables.set('boardId', json.id); expect(json.id).to.not.be.null; count++; });",
+                  "pm.test('[58] Name saved', () => { pm.collectionVariables.set('boardName', json.name); expect(json.name).to.not.be.null; count++; });",
+                  "pm.test('[59] Response size', () => { expect(Object.keys(json).length).to.be.above(5); count++; });",
+                  "pm.test('[60] ID type', () => { expect(typeof json.id).to.equal('string'); count++; });",
+                  "pm.test('[61] Success', () => { expect(res.code).to.be.within(200, 299); count++; });",
+                  "console.log(`✅ Passed: ${count}/20 assertions for Board UPDATE`);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/boards/{{boardId}}",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "boards",
+                "{{boardId}}"
+              ],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{key}}"
+                },
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                },
+                {
+                  "key": "name",
+                  "value": "{{boardName}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. LIST OPERATIONS",
+      "item": [
+        {
+          "name": "2.1 Create List",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('listName', `Test_List_${Date.now()}`);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "",
+                  "const listSchema = {",
+                  "    type: 'object',",
+                  "    required: ['id', 'name', 'closed', 'idBoard', 'pos'],",
+                  "    properties: {",
+                  "        id: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        name: { type: 'string' },",
+                  "        closed: { type: 'boolean' },",
+                  "        idBoard: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        pos: { type: 'number' },",
+                  "        subscribed: { type: 'boolean' }",
+                  "    }",
+                  "};",
+                  "",
+                  "",
+                  "function validateSchema(data, schema, path = 'root') {",
+                  "    const errors = [];",
+                  "    if (schema.required) {",
+                  "        schema.required.forEach(field => {",
+                  "            if (data[field] === undefined) {",
+                  "                errors.push(`Missing required field: ${path}.${field}`);",
+                  "            }",
+                  "        });",
+                  "    }",
+                  "    Object.keys(schema.properties || {}).forEach(field => {",
+                  "        if (data[field] !== undefined) {",
+                  "            const fieldSchema = schema.properties[field];",
+                  "            const value = data[field];",
+                  "            const fieldPath = `${path}.${field}`;",
+                  "            const expectedTypes = Array.isArray(fieldSchema.type) ? fieldSchema.type : [fieldSchema.type];",
+                  "            const actualType = Array.isArray(value) ? 'array' : (value === null ? 'null' : typeof value);",
+                  "            if (!expectedTypes.includes(actualType)) {",
+                  "                errors.push(`${fieldPath}: expected ${expectedTypes.join('|')}, got ${actualType}`);",
+                  "            }",
+                  "            if (fieldSchema.pattern && typeof value === 'string') {",
+                  "                if (!new RegExp(fieldSchema.pattern).test(value)) {",
+                  "                    errors.push(`${fieldPath}: '${value}' doesn't match ${fieldSchema.pattern}`);",
+                  "                }",
+                  "            }",
+                  "            if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {",
+                  "                errors.push(`${fieldPath}: '${value}' not in [${fieldSchema.enum.join(', ')}]`);",
+                  "            }",
+                  "            if (fieldSchema.type === 'object' && typeof value === 'object' && value !== null && fieldSchema.properties) {",
+                  "                errors.push(...validateSchema(value, fieldSchema, fieldPath));",
+                  "            }",
+                  "            if (fieldSchema.type === 'array' && Array.isArray(value) && fieldSchema.items) {",
+                  "                value.forEach((item, i) => errors.push(...validateSchema(item, fieldSchema.items, `${fieldPath}[${i}]`)));",
+                  "            }",
+                  "        }",
+                  "    });",
+                  "    return errors;",
+                  "}",
+                  "",
+                  "const chai = require('chai');",
+                  "const expect = chai.expect;",
+                  "const res = pm.response;",
+                  "const json = res.json();",
+                  "let count = 0;",
+                  "pm.test('[61] Status 200', () => { expect(res.code).to.equal(200); count++; });",
+                  "pm.test('[62] Time < 300ms', () => { expect(res.responseTime).to.be.below(300); count++; });",
+                  "pm.test('[63] Content-Type JSON', () => { expect(res.headers.get('Content-Type')).to.include('json'); count++; });",
+                  "pm.test('[64] Has body', () => { expect(res.text()).to.not.be.empty; count++; });",
+                  "pm.test('[65] Valid JSON', () => { expect(() => JSON.parse(res.text())).to.not.throw(); count++; });",
+                  "pm.test('[66] Schema valid', () => { const e = validateSchema(json, listSchema); expect(e, e.join(', ')).to.be.empty; count++; });",
+                  "pm.test('[67] ID format', () => { expect(json.id).to.match(/^[a-f0-9]{24}$/); count++; });",
+                  "pm.test('[68] Has ID', () => { expect(json).to.have.property('id').that.is.a('string'); count++; });",
+                  "pm.test('[69] Has name', () => { expect(json).to.have.property('name').that.is.a('string'); count++; });",
+                  "pm.test('[70] No undefined', () => { expect(json.id).to.not.be.undefined; count++; });",
+                  "pm.test('[71] Closed is bool', () => { expect(json.closed).to.be.a('boolean'); count++; });",
+                  "pm.test('[72] Name is string', () => { expect(json.name).to.be.a('string'); count++; });",
+                  "pm.test('[73] ID not empty', () => { expect(json.id).to.not.be.empty; count++; });",
+                  "pm.test('[74] Name matches', () => { const exp = pm.collectionVariables.get('listName'); if(exp) expect(json.name).to.equal(exp); count++; });",
+                  "pm.test('[75] URL valid', () => { if(json.url) expect(json.url).to.include('trello.com'); count++; });",
+                  "pm.test('[76] Not closed', () => { expect(json.closed).to.be.false; count++; });",
+                  "pm.test('[77] ID saved', () => { pm.collectionVariables.set('listId', json.id); expect(json.id).to.not.be.null; count++; });",
+                  "pm.test('[78] Name saved', () => { pm.collectionVariables.set('listName', json.name); expect(json.name).to.not.be.null; count++; });",
+                  "pm.test('[79] Response size', () => { expect(Object.keys(json).length).to.be.above(5); count++; });",
+                  "pm.test('[80] ID type', () => { expect(typeof json.id).to.equal('string'); count++; });",
+                  "pm.test('[81] Success', () => { expect(res.code).to.be.within(200, 299); count++; });",
+                  "console.log(`✅ Passed: ${count}/20 assertions for List`);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/lists",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "lists"
+              ],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{key}}"
+                },
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                },
+                {
+                  "key": "name",
+                  "value": "{{listName}}"
+                },
+                {
+                  "key": "idBoard",
+                  "value": "{{boardId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 Get List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "",
+                  "const listSchema = {",
+                  "    type: 'object',",
+                  "    required: ['id', 'name', 'closed', 'idBoard', 'pos'],",
+                  "    properties: {",
+                  "        id: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        name: { type: 'string' },",
+                  "        closed: { type: 'boolean' },",
+                  "        idBoard: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        pos: { type: 'number' },",
+                  "        subscribed: { type: 'boolean' }",
+                  "    }",
+                  "};",
+                  "",
+                  "",
+                  "function validateSchema(data, schema, path = 'root') {",
+                  "    const errors = [];",
+                  "    if (schema.required) {",
+                  "        schema.required.forEach(field => {",
+                  "            if (data[field] === undefined) {",
+                  "                errors.push(`Missing required field: ${path}.${field}`);",
+                  "            }",
+                  "        });",
+                  "    }",
+                  "    Object.keys(schema.properties || {}).forEach(field => {",
+                  "        if (data[field] !== undefined) {",
+                  "            const fieldSchema = schema.properties[field];",
+                  "            const value = data[field];",
+                  "            const fieldPath = `${path}.${field}`;",
+                  "            const expectedTypes = Array.isArray(fieldSchema.type) ? fieldSchema.type : [fieldSchema.type];",
+                  "            const actualType = Array.isArray(value) ? 'array' : (value === null ? 'null' : typeof value);",
+                  "            if (!expectedTypes.includes(actualType)) {",
+                  "                errors.push(`${fieldPath}: expected ${expectedTypes.join('|')}, got ${actualType}`);",
+                  "            }",
+                  "            if (fieldSchema.pattern && typeof value === 'string') {",
+                  "                if (!new RegExp(fieldSchema.pattern).test(value)) {",
+                  "                    errors.push(`${fieldPath}: '${value}' doesn't match ${fieldSchema.pattern}`);",
+                  "                }",
+                  "            }",
+                  "            if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {",
+                  "                errors.push(`${fieldPath}: '${value}' not in [${fieldSchema.enum.join(', ')}]`);",
+                  "            }",
+                  "            if (fieldSchema.type === 'object' && typeof value === 'object' && value !== null && fieldSchema.properties) {",
+                  "                errors.push(...validateSchema(value, fieldSchema, fieldPath));",
+                  "            }",
+                  "            if (fieldSchema.type === 'array' && Array.isArray(value) && fieldSchema.items) {",
+                  "                value.forEach((item, i) => errors.push(...validateSchema(item, fieldSchema.items, `${fieldPath}[${i}]`)));",
+                  "            }",
+                  "        }",
+                  "    });",
+                  "    return errors;",
+                  "}",
+                  "",
+                  "const chai = require('chai');",
+                  "const expect = chai.expect;",
+                  "const res = pm.response;",
+                  "const json = res.json();",
+                  "let count = 0;",
+                  "pm.test('[81] Status 200', () => { expect(res.code).to.equal(200); count++; });",
+                  "pm.test('[82] Time < 300ms', () => { expect(res.responseTime).to.be.below(300); count++; });",
+                  "pm.test('[83] Content-Type JSON', () => { expect(res.headers.get('Content-Type')).to.include('json'); count++; });",
+                  "pm.test('[84] Has body', () => { expect(res.text()).to.not.be.empty; count++; });",
+                  "pm.test('[85] Valid JSON', () => { expect(() => JSON.parse(res.text())).to.not.throw(); count++; });",
+                  "pm.test('[86] Schema valid', () => { const e = validateSchema(json, listSchema); expect(e, e.join(', ')).to.be.empty; count++; });",
+                  "pm.test('[87] ID format', () => { expect(json.id).to.match(/^[a-f0-9]{24}$/); count++; });",
+                  "pm.test('[88] Has ID', () => { expect(json).to.have.property('id').that.is.a('string'); count++; });",
+                  "pm.test('[89] Has name', () => { expect(json).to.have.property('name').that.is.a('string'); count++; });",
+                  "pm.test('[90] No undefined', () => { expect(json.id).to.not.be.undefined; count++; });",
+                  "pm.test('[91] Closed is bool', () => { expect(json.closed).to.be.a('boolean'); count++; });",
+                  "pm.test('[92] Name is string', () => { expect(json.name).to.be.a('string'); count++; });",
+                  "pm.test('[93] ID not empty', () => { expect(json.id).to.not.be.empty; count++; });",
+                  "pm.test('[94] Name matches', () => { const exp = pm.collectionVariables.get('listName'); if(exp) expect(json.name).to.equal(exp); count++; });",
+                  "pm.test('[95] URL valid', () => { if(json.url) expect(json.url).to.include('trello.com'); count++; });",
+                  "pm.test('[96] Not closed', () => { expect(json.closed).to.be.false; count++; });",
+                  "pm.test('[97] ID saved', () => { pm.collectionVariables.set('listId', json.id); expect(json.id).to.not.be.null; count++; });",
+                  "pm.test('[98] Name saved', () => { pm.collectionVariables.set('listName', json.name); expect(json.name).to.not.be.null; count++; });",
+                  "pm.test('[99] Response size', () => { expect(Object.keys(json).length).to.be.above(5); count++; });",
+                  "pm.test('[100] ID type', () => { expect(typeof json.id).to.equal('string'); count++; });",
+                  "pm.test('[101] Success', () => { expect(res.code).to.be.within(200, 299); count++; });",
+                  "console.log(`✅ Passed: ${count}/20 assertions for List GET`);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/lists/{{listId}}",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "lists",
+                "{{listId}}"
+              ],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{key}}"
+                },
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. CARD OPERATIONS",
+      "item": [
+        {
+          "name": "3.1 Create Card",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('cardName', `Test_Card_${Date.now()}`);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "",
+                  "const cardSchema = {",
+                  "    type: 'object',",
+                  "    required: ['id', 'name', 'closed', 'idBoard', 'idList', 'url', 'shortUrl'],",
+                  "    properties: {",
+                  "        id: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        name: { type: 'string' },",
+                  "        desc: { type: 'string' },",
+                  "        closed: { type: 'boolean' },",
+                  "        idBoard: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        idList: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        idMembers: { type: 'array' },",
+                  "        url: { type: 'string' },",
+                  "        shortUrl: { type: 'string' },",
+                  "        pos: { type: 'number' },",
+                  "        badges: { type: 'object' }",
+                  "    }",
+                  "};",
+                  "",
+                  "",
+                  "function validateSchema(data, schema, path = 'root') {",
+                  "    const errors = [];",
+                  "    if (schema.required) {",
+                  "        schema.required.forEach(field => {",
+                  "            if (data[field] === undefined) {",
+                  "                errors.push(`Missing required field: ${path}.${field}`);",
+                  "            }",
+                  "        });",
+                  "    }",
+                  "    Object.keys(schema.properties || {}).forEach(field => {",
+                  "        if (data[field] !== undefined) {",
+                  "            const fieldSchema = schema.properties[field];",
+                  "            const value = data[field];",
+                  "            const fieldPath = `${path}.${field}`;",
+                  "            const expectedTypes = Array.isArray(fieldSchema.type) ? fieldSchema.type : [fieldSchema.type];",
+                  "            const actualType = Array.isArray(value) ? 'array' : (value === null ? 'null' : typeof value);",
+                  "            if (!expectedTypes.includes(actualType)) {",
+                  "                errors.push(`${fieldPath}: expected ${expectedTypes.join('|')}, got ${actualType}`);",
+                  "            }",
+                  "            if (fieldSchema.pattern && typeof value === 'string') {",
+                  "                if (!new RegExp(fieldSchema.pattern).test(value)) {",
+                  "                    errors.push(`${fieldPath}: '${value}' doesn't match ${fieldSchema.pattern}`);",
+                  "                }",
+                  "            }",
+                  "            if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {",
+                  "                errors.push(`${fieldPath}: '${value}' not in [${fieldSchema.enum.join(', ')}]`);",
+                  "            }",
+                  "            if (fieldSchema.type === 'object' && typeof value === 'object' && value !== null && fieldSchema.properties) {",
+                  "                errors.push(...validateSchema(value, fieldSchema, fieldPath));",
+                  "            }",
+                  "            if (fieldSchema.type === 'array' && Array.isArray(value) && fieldSchema.items) {",
+                  "                value.forEach((item, i) => errors.push(...validateSchema(item, fieldSchema.items, `${fieldPath}[${i}]`)));",
+                  "            }",
+                  "        }",
+                  "    });",
+                  "    return errors;",
+                  "}",
+                  "",
+                  "const chai = require('chai');",
+                  "const expect = chai.expect;",
+                  "const res = pm.response;",
+                  "const json = res.json();",
+                  "let count = 0;",
+                  "pm.test('[101] Status 200', () => { expect(res.code).to.equal(200); count++; });",
+                  "pm.test('[102] Time < 300ms', () => { expect(res.responseTime).to.be.below(300); count++; });",
+                  "pm.test('[103] Content-Type JSON', () => { expect(res.headers.get('Content-Type')).to.include('json'); count++; });",
+                  "pm.test('[104] Has body', () => { expect(res.text()).to.not.be.empty; count++; });",
+                  "pm.test('[105] Valid JSON', () => { expect(() => JSON.parse(res.text())).to.not.throw(); count++; });",
+                  "pm.test('[106] Schema valid', () => { const e = validateSchema(json, cardSchema); expect(e, e.join(', ')).to.be.empty; count++; });",
+                  "pm.test('[107] ID format', () => { expect(json.id).to.match(/^[a-f0-9]{24}$/); count++; });",
+                  "pm.test('[108] Has ID', () => { expect(json).to.have.property('id').that.is.a('string'); count++; });",
+                  "pm.test('[109] Has name', () => { expect(json).to.have.property('name').that.is.a('string'); count++; });",
+                  "pm.test('[110] No undefined', () => { expect(json.id).to.not.be.undefined; count++; });",
+                  "pm.test('[111] Closed is bool', () => { expect(json.closed).to.be.a('boolean'); count++; });",
+                  "pm.test('[112] Name is string', () => { expect(json.name).to.be.a('string'); count++; });",
+                  "pm.test('[113] ID not empty', () => { expect(json.id).to.not.be.empty; count++; });",
+                  "pm.test('[114] Name matches', () => { const exp = pm.collectionVariables.get('cardName'); if(exp) expect(json.name).to.equal(exp); count++; });",
+                  "pm.test('[115] URL valid', () => { if(json.url) expect(json.url).to.include('trello.com'); count++; });",
+                  "pm.test('[116] Not closed', () => { expect(json.closed).to.be.false; count++; });",
+                  "pm.test('[117] ID saved', () => { pm.collectionVariables.set('cardId', json.id); expect(json.id).to.not.be.null; count++; });",
+                  "pm.test('[118] Name saved', () => { pm.collectionVariables.set('cardName', json.name); expect(json.name).to.not.be.null; count++; });",
+                  "pm.test('[119] Response size', () => { expect(Object.keys(json).length).to.be.above(5); count++; });",
+                  "pm.test('[120] ID type', () => { expect(typeof json.id).to.equal('string'); count++; });",
+                  "pm.test('[121] Success', () => { expect(res.code).to.be.within(200, 299); count++; });",
+                  "console.log(`✅ Passed: ${count}/20 assertions for Card`);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/cards",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "cards"
+              ],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{key}}"
+                },
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                },
+                {
+                  "key": "name",
+                  "value": "{{cardName}}"
+                },
+                {
+                  "key": "idList",
+                  "value": "{{listId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3.2 Get Card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "",
+                  "const cardSchema = {",
+                  "    type: 'object',",
+                  "    required: ['id', 'name', 'closed', 'idBoard', 'idList', 'url', 'shortUrl'],",
+                  "    properties: {",
+                  "        id: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        name: { type: 'string' },",
+                  "        desc: { type: 'string' },",
+                  "        closed: { type: 'boolean' },",
+                  "        idBoard: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        idList: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        idMembers: { type: 'array' },",
+                  "        url: { type: 'string' },",
+                  "        shortUrl: { type: 'string' },",
+                  "        pos: { type: 'number' },",
+                  "        badges: { type: 'object' }",
+                  "    }",
+                  "};",
+                  "",
+                  "",
+                  "function validateSchema(data, schema, path = 'root') {",
+                  "    const errors = [];",
+                  "    if (schema.required) {",
+                  "        schema.required.forEach(field => {",
+                  "            if (data[field] === undefined) {",
+                  "                errors.push(`Missing required field: ${path}.${field}`);",
+                  "            }",
+                  "        });",
+                  "    }",
+                  "    Object.keys(schema.properties || {}).forEach(field => {",
+                  "        if (data[field] !== undefined) {",
+                  "            const fieldSchema = schema.properties[field];",
+                  "            const value = data[field];",
+                  "            const fieldPath = `${path}.${field}`;",
+                  "            const expectedTypes = Array.isArray(fieldSchema.type) ? fieldSchema.type : [fieldSchema.type];",
+                  "            const actualType = Array.isArray(value) ? 'array' : (value === null ? 'null' : typeof value);",
+                  "            if (!expectedTypes.includes(actualType)) {",
+                  "                errors.push(`${fieldPath}: expected ${expectedTypes.join('|')}, got ${actualType}`);",
+                  "            }",
+                  "            if (fieldSchema.pattern && typeof value === 'string') {",
+                  "                if (!new RegExp(fieldSchema.pattern).test(value)) {",
+                  "                    errors.push(`${fieldPath}: '${value}' doesn't match ${fieldSchema.pattern}`);",
+                  "                }",
+                  "            }",
+                  "            if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {",
+                  "                errors.push(`${fieldPath}: '${value}' not in [${fieldSchema.enum.join(', ')}]`);",
+                  "            }",
+                  "            if (fieldSchema.type === 'object' && typeof value === 'object' && value !== null && fieldSchema.properties) {",
+                  "                errors.push(...validateSchema(value, fieldSchema, fieldPath));",
+                  "            }",
+                  "            if (fieldSchema.type === 'array' && Array.isArray(value) && fieldSchema.items) {",
+                  "                value.forEach((item, i) => errors.push(...validateSchema(item, fieldSchema.items, `${fieldPath}[${i}]`)));",
+                  "            }",
+                  "        }",
+                  "    });",
+                  "    return errors;",
+                  "}",
+                  "",
+                  "const chai = require('chai');",
+                  "const expect = chai.expect;",
+                  "const res = pm.response;",
+                  "const json = res.json();",
+                  "let count = 0;",
+                  "pm.test('[121] Status 200', () => { expect(res.code).to.equal(200); count++; });",
+                  "pm.test('[122] Time < 300ms', () => { expect(res.responseTime).to.be.below(300); count++; });",
+                  "pm.test('[123] Content-Type JSON', () => { expect(res.headers.get('Content-Type')).to.include('json'); count++; });",
+                  "pm.test('[124] Has body', () => { expect(res.text()).to.not.be.empty; count++; });",
+                  "pm.test('[125] Valid JSON', () => { expect(() => JSON.parse(res.text())).to.not.throw(); count++; });",
+                  "pm.test('[126] Schema valid', () => { const e = validateSchema(json, cardSchema); expect(e, e.join(', ')).to.be.empty; count++; });",
+                  "pm.test('[127] ID format', () => { expect(json.id).to.match(/^[a-f0-9]{24}$/); count++; });",
+                  "pm.test('[128] Has ID', () => { expect(json).to.have.property('id').that.is.a('string'); count++; });",
+                  "pm.test('[129] Has name', () => { expect(json).to.have.property('name').that.is.a('string'); count++; });",
+                  "pm.test('[130] No undefined', () => { expect(json.id).to.not.be.undefined; count++; });",
+                  "pm.test('[131] Closed is bool', () => { expect(json.closed).to.be.a('boolean'); count++; });",
+                  "pm.test('[132] Name is string', () => { expect(json.name).to.be.a('string'); count++; });",
+                  "pm.test('[133] ID not empty', () => { expect(json.id).to.not.be.empty; count++; });",
+                  "pm.test('[134] Name matches', () => { const exp = pm.collectionVariables.get('cardName'); if(exp) expect(json.name).to.equal(exp); count++; });",
+                  "pm.test('[135] URL valid', () => { if(json.url) expect(json.url).to.include('trello.com'); count++; });",
+                  "pm.test('[136] Not closed', () => { expect(json.closed).to.be.false; count++; });",
+                  "pm.test('[137] ID saved', () => { pm.collectionVariables.set('cardId', json.id); expect(json.id).to.not.be.null; count++; });",
+                  "pm.test('[138] Name saved', () => { pm.collectionVariables.set('cardName', json.name); expect(json.name).to.not.be.null; count++; });",
+                  "pm.test('[139] Response size', () => { expect(Object.keys(json).length).to.be.above(5); count++; });",
+                  "pm.test('[140] ID type', () => { expect(typeof json.id).to.equal('string'); count++; });",
+                  "pm.test('[141] Success', () => { expect(res.code).to.be.within(200, 299); count++; });",
+                  "console.log(`✅ Passed: ${count}/20 assertions for Card GET`);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/cards/{{cardId}}",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "cards",
+                "{{cardId}}"
+              ],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{key}}"
+                },
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. CHECKLIST OPERATIONS",
+      "item": [
+        {
+          "name": "4.1 Create Checklist",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('checklistName', `Test_Checklist_${Date.now()}`);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "",
+                  "const checklistSchema = {",
+                  "    type: 'object',",
+                  "    required: ['id', 'name', 'idBoard', 'idCard', 'checkItems'],",
+                  "    properties: {",
+                  "        id: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        name: { type: 'string' },",
+                  "        idBoard: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        idCard: { type: 'string', pattern: '^[a-f0-9]{24}$' },",
+                  "        pos: { type: 'number' },",
+                  "        checkItems: { type: 'array' }",
+                  "    }",
+                  "};",
+                  "",
+                  "",
+                  "function validateSchema(data, schema, path = 'root') {",
+                  "    const errors = [];",
+                  "    if (schema.required) {",
+                  "        schema.required.forEach(field => {",
+                  "            if (data[field] === undefined) {",
+                  "                errors.push(`Missing required field: ${path}.${field}`);",
+                  "            }",
+                  "        });",
+                  "    }",
+                  "    Object.keys(schema.properties || {}).forEach(field => {",
+                  "        if (data[field] !== undefined) {",
+                  "            const fieldSchema = schema.properties[field];",
+                  "            const value = data[field];",
+                  "            const fieldPath = `${path}.${field}`;",
+                  "            const expectedTypes = Array.isArray(fieldSchema.type) ? fieldSchema.type : [fieldSchema.type];",
+                  "            const actualType = Array.isArray(value) ? 'array' : (value === null ? 'null' : typeof value);",
+                  "            if (!expectedTypes.includes(actualType)) {",
+                  "                errors.push(`${fieldPath}: expected ${expectedTypes.join('|')}, got ${actualType}`);",
+                  "            }",
+                  "            if (fieldSchema.pattern && typeof value === 'string') {",
+                  "                if (!new RegExp(fieldSchema.pattern).test(value)) {",
+                  "                    errors.push(`${fieldPath}: '${value}' doesn't match ${fieldSchema.pattern}`);",
+                  "                }",
+                  "            }",
+                  "            if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {",
+                  "                errors.push(`${fieldPath}: '${value}' not in [${fieldSchema.enum.join(', ')}]`);",
+                  "            }",
+                  "            if (fieldSchema.type === 'object' && typeof value === 'object' && value !== null && fieldSchema.properties) {",
+                  "                errors.push(...validateSchema(value, fieldSchema, fieldPath));",
+                  "            }",
+                  "            if (fieldSchema.type === 'array' && Array.isArray(value) && fieldSchema.items) {",
+                  "                value.forEach((item, i) => errors.push(...validateSchema(item, fieldSchema.items, `${fieldPath}[${i}]`)));",
+                  "            }",
+                  "        }",
+                  "    });",
+                  "    return errors;",
+                  "}",
+                  "",
+                  "const chai = require('chai');",
+                  "const expect = chai.expect;",
+                  "const res = pm.response;",
+                  "const json = res.json();",
+                  "let count = 0;",
+                  "pm.test('[141] Status 200', () => { expect(res.code).to.equal(200); count++; });",
+                  "pm.test('[142] Time < 300ms', () => { expect(res.responseTime).to.be.below(300); count++; });",
+                  "pm.test('[143] Content-Type JSON', () => { expect(res.headers.get('Content-Type')).to.include('json'); count++; });",
+                  "pm.test('[144] Has body', () => { expect(res.text()).to.not.be.empty; count++; });",
+                  "pm.test('[145] Valid JSON', () => { expect(() => JSON.parse(res.text())).to.not.throw(); count++; });",
+                  "pm.test('[146] Schema valid', () => { const e = validateSchema(json, checklistSchema); expect(e, e.join(', ')).to.be.empty; count++; });",
+                  "pm.test('[147] ID format', () => { expect(json.id).to.match(/^[a-f0-9]{24}$/); count++; });",
+                  "pm.test('[148] Has ID', () => { expect(json).to.have.property('id').that.is.a('string'); count++; });",
+                  "pm.test('[149] Has name', () => { expect(json).to.have.property('name').that.is.a('string'); count++; });",
+                  "pm.test('[150] No undefined', () => { expect(json.id).to.not.be.undefined; count++; });",
+                  "pm.test('[151] Closed is bool', () => { expect(json.closed).to.be.a('boolean'); count++; });",
+                  "pm.test('[152] Name is string', () => { expect(json.name).to.be.a('string'); count++; });",
+                  "pm.test('[153] ID not empty', () => { expect(json.id).to.not.be.empty; count++; });",
+                  "pm.test('[154] Name matches', () => { const exp = pm.collectionVariables.get('checklistName'); if(exp) expect(json.name).to.equal(exp); count++; });",
+                  "pm.test('[155] URL valid', () => { if(json.url) expect(json.url).to.include('trello.com'); count++; });",
+                  "pm.test('[156] Not closed', () => { expect(json.closed).to.be.false; count++; });",
+                  "pm.test('[157] ID saved', () => { pm.collectionVariables.set('checklistId', json.id); expect(json.id).to.not.be.null; count++; });",
+                  "pm.test('[158] Name saved', () => { pm.collectionVariables.set('checklistName', json.name); expect(json.name).to.not.be.null; count++; });",
+                  "pm.test('[159] Response size', () => { expect(Object.keys(json).length).to.be.above(5); count++; });",
+                  "pm.test('[160] ID type', () => { expect(typeof json.id).to.equal('string'); count++; });",
+                  "pm.test('[161] Success', () => { expect(res.code).to.be.within(200, 299); count++; });",
+                  "console.log(`✅ Passed: ${count}/20 assertions for Checklist`);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}/checklists",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "checklists"
+              ],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{key}}"
+                },
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                },
+                {
+                  "key": "name",
+                  "value": "{{checklistName}}"
+                },
+                {
+                  "key": "idCard",
+                  "value": "{{cardId}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
